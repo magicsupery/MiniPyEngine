@@ -2,8 +2,8 @@
 from core.ecs import Component
 
 
-class MeshComponent(Component):
-    def __init__(self, vertices, indices):
+class Mesh(Component):
+    def __init__(self, vertices, indices=None):
         super().__init__()
         self.vertices = vertices
-        self.indices = indices
+        self.indices = indices if indices is not None else []

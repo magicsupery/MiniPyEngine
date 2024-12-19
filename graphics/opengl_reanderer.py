@@ -1,22 +1,53 @@
 ﻿# -*- coding:utf-8 -*-
 
 import glfw
-import numpy as np
 from ctypes import c_void_p
 from OpenGL.GL import *
-from graphics.renderer import Renderer
+from graphics.renderer import Renderer, RenderObject
+
+
+class OpenGLRenderObject(RenderObject):
+    def __init__(self, model_matrix, mesh):
+        super().__init__(model_matrix, mesh)
+
+    def render(self, shader_program):
+        VAO = glGenVertexArrays(1)
+        VBO = glGenBuffers(1)
+        EBO = glGenBuffers(1)
+
+        glBindVertexArray(VAO)
+        glBindBuffer(GL_ARRAY_BUFFER, VBO)
+        glBufferData(GL_ARRAY_BUFFER, self.mesh.vertices.nbytes, self.mesh.vertices, GL_STATIC_DRAW)
+
+        if len(self.mesh.indices) > 0:
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, self.mesh.indices.nbytes, self.mesh.indices, GL_STATIC_DRAW)
+
+        # position attribute
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * self.mesh.vertices.itemsize, c_void_p(0))
+        glEnableVertexAttribArray(0)
+
+        model_loc = glGetUniformLocation(shader_program, "model")
+        glUniformMatrix4fv(model_loc, 1, GL_FALSE, self.model_matrix)
+
+        if len(self.mesh.indices) > 0:
+            glDrawElements(GL_TRIANGLES, len(self.mesh.indices), GL_UNSIGNED_INT, None)
+        else:
+            glDrawArrays(GL_TRIANGLES, 0, len(self.mesh.vertices) // 3)
+
+        glDeleteVertexArrays(1, [VAO])
+        glDeleteBuffers(1, [VBO])
+        glDeleteBuffers(1, [EBO])
 
 
 class OpenGLRenderer(Renderer):
     def __init__(self):
-        self.vertices = None
-        self.VBO = None
-        self.VAO = None
         self.shader_program = None
         self.title = None
         self.height = None
         self.width = None
         self.window = None
+        self.render_objects = []
 
     def initialize(self, width, height, title):
         self.width = width
@@ -44,12 +75,16 @@ class OpenGLRenderer(Renderer):
         self.shader_program = self.create_shader_program("graphics/shaders/vertex_shader.glsl",
                                                          "graphics/shaders/fragment_shader.glsl")
 
-    def render(self):
-        glClear(GL_COLOR_BUFFER_BIT)
+        self.setup_camera()
+
+    def render(self, render_objects):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glUseProgram(self.shader_program)
-        glBindVertexArray(self.VAO)
-        glDrawArrays(GL_TRIANGLES, 0, 3)
-        glBindVertexArray(0)
+
+        self.render_objects = render_objects
+        for render_object in render_objects:
+            render_object.render(self.shader_program)
+
         glfw.swap_buffers(self.window)
 
     def cleanup(self):
@@ -62,31 +97,7 @@ class OpenGLRenderer(Renderer):
     def init_opengl(self):
         glViewport(0, 0, self.width, self.height)
         glClearColor(0.0, 0.0, 0.0, 1.0)
-        self.setup_mesh()
-
-    def setup_mesh(self):
-        # 定义一个简单的三角形
-        self.vertices = np.array([
-            0.0, -0.5, 0.0,  # 左下
-            0.5, 0.5, 0.0,  # 右上
-            -0.5, 0.5, 0.0  # 左上
-        ], dtype=np.float32)
-
-        # 创建 VAO 和 VBO
-        self.VAO = glGenVertexArrays(1)
-        self.VBO = glGenBuffers(1)
-
-        glBindVertexArray(self.VAO)
-
-        glBindBuffer(GL_ARRAY_BUFFER, self.VBO)
-        glBufferData(GL_ARRAY_BUFFER, self.vertices.nbytes, self.vertices, GL_STATIC_DRAW)
-
-        # 设置顶点属性指针
-        glEnableVertexAttribArray(0)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * self.vertices.itemsize, c_void_p(0))
-
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
-        glBindVertexArray(0)
+        glEnable(GL_DEPTH_TEST)
 
     def create_shader_program(self, vertex_path, fragment_path):
         with open(vertex_path, 'r', encoding='utf-8') as file:
@@ -116,3 +127,6 @@ class OpenGLRenderer(Renderer):
         glDeleteShader(fragment_shader)
 
         return shader_program
+
+    def setup_camera(self):
+        pass
