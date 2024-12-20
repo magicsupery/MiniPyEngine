@@ -75,8 +75,6 @@ class OpenGLRenderer(Renderer):
         self.shader_program = self.create_shader_program("graphics/shaders/vertex_shader.glsl",
                                                          "graphics/shaders/fragment_shader.glsl")
 
-        self.setup_camera()
-
     def render(self, render_objects):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glUseProgram(self.shader_program)
@@ -105,6 +103,7 @@ class OpenGLRenderer(Renderer):
             vertex_shader = glCreateShader(GL_VERTEX_SHADER)
             glShaderSource(vertex_shader, vertex_src)
             glCompileShader(vertex_shader)
+            print("compile vertext shader")
             if not glGetShaderiv(vertex_shader, GL_COMPILE_STATUS):
                 raise Exception("Error compiling vertex shader: " + glGetShaderInfoLog(vertex_shader).decode())
 
@@ -128,5 +127,10 @@ class OpenGLRenderer(Renderer):
 
         return shader_program
 
-    def setup_camera(self):
-        pass
+    def setup_camera(self, camera_setting):
+        glUseProgram(self.shader_program)
+        camera_loc = glGetUniformLocation(self.shader_program, "view")
+        glUniformMatrix4fv(camera_loc, 1, GL_FALSE, camera_setting.view_matrix)
+        projection_loc = glGetUniformLocation(self.shader_program, "projection")
+        glUniformMatrix4fv(projection_loc, 1, GL_FALSE, camera_setting.projection_matrix)
+        return

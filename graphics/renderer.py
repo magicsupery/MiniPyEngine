@@ -16,6 +16,10 @@ class Renderer(ABC):
         pass
 
     @abstractmethod
+    def setup_camera(self, camera_setting):
+        pass
+   
+    @abstractmethod
     def render(self, render_objects):
         pass
 
