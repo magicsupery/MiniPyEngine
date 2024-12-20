@@ -18,14 +18,11 @@ class Transform(Component):
         super(Transform, self).__setattr__(key, value)
 
     def calculate_model_matrix(self):
-        """
-        TODO 
-        提前计算好旋转矩阵，避免每次都计算，等发生变化时再重新计算
-        """
 
         if not self.dirty:
             return self.model_matrix
 
+        # Notice ！！！
         # 缩放矩阵
         scale = np.array([
             [self.scale[0], 0.0, 0.0, 0.0],
@@ -75,6 +72,6 @@ class Transform(Component):
         rotation = np.matmul(np.matmul(rotation_y, rotation_x), rotation_z)
 
         # 最终模型矩阵：模型 = 平移 * 旋转 * 缩放
-        self.model_matrix = np.matmul(np.matmul(translation, rotation), scale)
+        self.model_matrix = (np.matmul(np.matmul(translation, rotation), scale)).flatten('F')
         self.dirty = False
         return self.model_matrix

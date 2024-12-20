@@ -42,10 +42,10 @@ class ECSManager(object):
         self.component_to_entity = defaultdict(list)
         self.systems = []
 
-    def create_entity(self, entity_type, entity_id=None):
+    def create_entity(self, entity_type, entity_id=None, **kwargs):
         assert (isinstance(entity_type, type))
         assert (issubclass(entity_type, Entity))
-        entity = entity_type(entity_id)
+        entity = entity_type(entity_id, **kwargs)
         self.entities.append(entity)
         return entity
 

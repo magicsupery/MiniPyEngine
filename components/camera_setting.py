@@ -55,6 +55,12 @@
 
 import numpy as np
 from core.ecs import Component
+from enum import Enum
+
+
+class ProjectionType(Enum):
+    PERSPECTIVE = 0
+    ORTHOGRAPHIC = 1
 
 
 class CameraSetting(Component):
@@ -64,16 +70,20 @@ class CameraSetting(Component):
                  fov=45.0,
                  aspect_ratio=800 / 600,
                  near_clip=0.1,
-                 far_clip=100.0):
+                 far_clip=100.0,
+                 projection_type=ProjectionType.PERSPECTIVE):
         super(CameraSetting, self).__init__()
         self.position = position
-        self.front = front
-        self.up = up
+        self.front = self.normalize(front)
+        self.up = self.normalize(up)
         self.right = np.cross(self.front, self.up)
         self.fov = fov
         self.aspect_ratio = aspect_ratio
         self.near_clip = near_clip
         self.far_clip = far_clip
+        assert self.near_clip > 0, "near_clip must be greater than 0"
+        assert self.far_clip > self.near_clip, "far_clip must be greater than near_clip"
+        self.projection_type = projection_type
         self.view_matrix = None
         self.calculate_view_matrix()
         self.projection_matrix = None

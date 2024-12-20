@@ -14,13 +14,13 @@ from Context.context import global_data as GD
 def main():
     ecs = ECSManager()
     GD.ecs_manager = ecs
-    GD.ecs_manager.create_entity(Camera)
+    GD.ecs_manager.create_entity(Camera, position=[0.0, 0.0, 3.0])
 
     player = ecs.create_entity(GameObject)
     ecs.add_component(player, Texture("player.png"))
-    player.Transform.position = [0.0, 0.0, -1000.0]
+    player.Transform.position = [1.0, 0.0, 0.0]
     player.Transform.rotation = [0.0, 0.0, 0.0]
-    player.Transform.scale = [1.0, 1.0, 1.0]
+    player.Transform.scale = [1.0, 2.0, 1.0]
     vertices = np.array([
         -0.5, -0.5, 0.0,
         0.5, -0.5, 0.0,
