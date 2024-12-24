@@ -7,14 +7,23 @@ from components.texture import Texture
 from components.mesh import Mesh
 from core.main_loop import MainLoop
 from core.ecs import ECSManager
+from systems.input_system import InputSystem
 from systems.render_system import RenderSystem
 from Context.context import global_data as GD
+from input.event_types import Key, KeyAction
 
 
 def main():
     ecs = ECSManager()
     GD.ecs_manager = ecs
     GD.ecs_manager.create_entity(Camera, position=[0.0, 0.0, 3.0])
+
+    ecs.add_system(RenderSystem())
+
+    input_system = InputSystem()
+    ecs.add_system(input_system)
+
+    input_system.register_keyboard_listener(Key.W, KeyAction.PRESSED, lambda: print("W pressed"))
 
     player = ecs.create_entity(GameObject)
     ecs.add_component(player, Texture("player.png"))
@@ -37,8 +46,6 @@ def main():
     # ], dtype=np.float32)
     # ecs.add_component(player1, Mesh(vertices))
 
-    render_system = RenderSystem()
-    ecs.add_system(render_system)
     main_loop = MainLoop()
     main_loop.run()
 

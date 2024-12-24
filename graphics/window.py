@@ -2,6 +2,19 @@
 
 
 from abc import ABC, abstractmethod
+from enum import Enum, auto
+
+
+class KeyboardEventType(Enum):
+    KEY_PRESSED = auto()
+    KEY_RELEASED = auto()
+
+
+class Key(Enum):
+    W = auto()
+    A = auto()
+    S = auto()
+    D = auto()
 
 
 class Window(ABC):
@@ -22,7 +35,7 @@ class Window(ABC):
         pass
 
     @abstractmethod
-    def get_key(self, key):
+    def pop_keyboard_event(self):
         pass
 
     @abstractmethod

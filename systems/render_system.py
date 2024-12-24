@@ -24,6 +24,7 @@ class RenderSystem(System):
             raise Exception("There should be exactly one camera in the scene")
 
         self.main_camera = camera_entities[0]
+        GD.main_camera = self.main_camera
         self.renderer.setup_camera(self.main_camera.components[CameraSetting])
 
     def update(self, delta_time):
