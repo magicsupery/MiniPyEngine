@@ -5,8 +5,8 @@ from components.camera_setting import CameraSetting
 from components.mesh import Mesh
 from components.transform import Transform
 from core.ecs import System
-from graphics.opengl_reanderer import OpenGLRenderer, OpenGLRenderObject
 from config.renderer import RendererConfig
+from graphics.factory import create_renderer
 from Context.context import global_data as GD
 
 
@@ -14,7 +14,7 @@ class RenderSystem(System):
     def __init__(self):
         super().__init__()
         # 之后需要重构，应该由工厂类返回对应的Renderer
-        self.renderer = OpenGLRenderer()
+        self.renderer = create_renderer()
         GD.renderer = self.renderer
         self.renderer.initialize(RendererConfig.Width, RendererConfig.Height, RendererConfig.Title)
 
@@ -27,10 +27,6 @@ class RenderSystem(System):
         self.renderer.setup_camera(self.main_camera.components[CameraSetting])
 
     def update(self, delta_time):
-        # entities = self.manager.get_entities_with_component(Texture)
-        # for entity in entities:
-        #     texture = entity.components[Texture]
-
         render_objects = []
         mesh_entities = GD.ecs_manager.get_entities_with_component(Mesh)
         for entity in mesh_entities:
@@ -39,7 +35,7 @@ class RenderSystem(System):
 
             mesh = entity.components[Mesh]
             # 之后重构，应该由工厂类返回对应的RenderObject
-            render_object = OpenGLRenderObject(transform.calculate_model_matrix(), mesh)
-            render_objects.append(render_object)
+            # render_object = OpenGLRenderObject(transform.calculate_model_matrix(), mesh)
+            render_objects.append((transform.calculate_model_matrix(), mesh))
 
         self.renderer.render(render_objects)

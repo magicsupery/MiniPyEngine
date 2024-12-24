@@ -1,9 +1,9 @@
 ﻿# -*- coding:utf-8 -*-
 
-import glfw
 from ctypes import c_void_p
 from OpenGL.GL import *
 from graphics.renderer import Renderer, RenderObject
+from graphics.factory import create_window
 
 
 class OpenGLRenderObject(RenderObject):
@@ -53,20 +53,9 @@ class OpenGLRenderer(Renderer):
         self.width = width
         self.height = height
         self.title = title
-        if not glfw.init():
-            raise Exception("GLFW initialization failed")
 
-        glfw.window_hint(glfw.CONTEXT_VERSION_MAJOR, 4)
-        glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 1)
-        # glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-        # glfw.window_hint(glfw.CLIENT_API, glfw.OPENGL_ES_API)
-
-        self.window = glfw.create_window(width, height, title, None, None)
-        if not self.window:
-            glfw.terminate()
-            raise Exception("GLFW window creation failed")
-
-        glfw.make_context_current(self.window)
+        self.window = create_window()
+        self.window.initialize(width, height, title)
 
         # init opengl
         self.init_opengl()
@@ -75,22 +64,23 @@ class OpenGLRenderer(Renderer):
         self.shader_program = self.create_shader_program("graphics/shaders/vertex_shader.glsl",
                                                          "graphics/shaders/fragment_shader.glsl")
 
-    def render(self, render_objects):
+    def render(self, render_object_datas):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glUseProgram(self.shader_program)
 
-        self.render_objects = render_objects
-        for render_object in render_objects:
+        self.render_objects = []
+        for render_data in render_object_datas:
+            render_object = OpenGLRenderObject(render_data[0], render_data[1])
             render_object.render(self.shader_program)
+            self.render_objects.append(render_object)
 
-        glfw.swap_buffers(self.window)
+        self.window.swap_buffers()
 
     def cleanup(self):
         glDeleteVertexArrays(1, [self.VAO])
         glDeleteBuffers(1, [self.VBO])
         glDeleteProgram(self.shader_program)
-        glfw.destroy_window(self.window)
-        glfw.terminate()
+        self.window.cleanup()
 
     def init_opengl(self):
         glViewport(0, 0, self.width, self.height)
