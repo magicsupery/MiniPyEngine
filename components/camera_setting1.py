@@ -64,52 +64,10 @@ class ProjectionType(Enum):
     ORTHOGRAPHIC = 1
 
 
-class Quaternion:
-    """简单的四元数类，用于处理旋转"""
-
-    def __init__(self, w=1.0, x=0.0, y=0.0, z=0.0):
-        self.w = w
-        self.x = x
-        self.y = y
-        self.z = z
-
-    @staticmethod
-    def from_euler_angles(pitch, yaw, roll):
-        """从欧拉角创建四元数，单位为度"""
-        p = radians(pitch) / 2
-        y = radians(yaw) / 2
-        r = radians(roll) / 2
-
-        sin_p, cos_p = sin(p), cos(p)
-        sin_y, cos_y = sin(y), cos(y)
-        sin_r, cos_r = sin(r), cos(r)
-
-        w = cos_r * cos_p * cos_y + sin_r * sin_p * sin_y
-        x = sin_r * cos_p * cos_y - cos_r * sin_p * sin_y
-        y = cos_r * sin_p * cos_y + sin_r * cos_p * sin_y
-        z = cos_r * cos_p * sin_y - sin_r * sin_p * cos_y
-
-        return Quaternion(w, x, y, z)
-
-    def to_rotation_matrix(self):
-        """将四元数转换为3x3旋转矩阵"""
-        w, x, y, z = self.w, self.x, self.y, self.z
-        return np.array([
-            [1 - 2 * (y ** 2 + z ** 2), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-            [2 * (x * y + z * w), 1 - 2 * (x ** 2 + z ** 2), 2 * (y * z - x * w)],
-            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x ** 2 + y ** 2)]
-        ])
-
-    def normalize(self):
-        norm = sqrt(self.w ** 2 + self.x ** 2 + self.y ** 2 + self.z ** 2)
-        if norm == 0:
-            return Quaternion()
-        return Quaternion(self.w / norm, self.x / norm, self.y / norm, self.z / norm)
-
-
 class CameraSetting(Component):
     def __init__(self, position=np.array([0.0, 0.0, 3.0]),
-                 rotation=Quaternion(),  # 使用四元数表示旋转
+                 front=np.array([0.0, 0.0, -1.0]),
+                 up=np.array([0.0, 1.0, 0.0]),
                  fov=45.0,
                  aspect_ratio=800 / 600,
                  near_clip=0.1,
@@ -117,73 +75,66 @@ class CameraSetting(Component):
                  projection_type=ProjectionType.PERSPECTIVE):
         super(CameraSetting, self).__init__()
         self.position = position
-        self.rotation = rotation.normalize()
+        self.front = self.normalize(front)
+        self.up = self.normalize(up)
+        self.right = self.normalize(np.cross(self.up, self.front))
         self.fov = fov
         self.aspect_ratio = aspect_ratio
         self.near_clip = near_clip
         self.far_clip = far_clip
+        assert self.near_clip > 0, "near_clip must be greater than 0"
+        assert self.far_clip > self.near_clip, "far_clip must be greater than near_clip"
         self.projection_type = projection_type
-
-        # 添加偏航和俯仰角度
-        self.pitch = 0.0  # 俯仰角
-        self.yaw = -90.0  # 偏航角，初始化指向负Z轴
-
-        # 初始化旋转四元数
-        self.rotation = Quaternion.from_euler_angles(self.pitch, self.yaw, 0.0)
-        # 初始化方向向量
-        self.update_direction_vectors()
 
         # 初始化视图矩阵和投影矩阵
         self.view_matrix = None
         self.projection_matrix = None
         self.calculate_projection_matrix()
-        self.calculate_view_matrix()
 
-        self.is_dirty = False
+        self.is_dirty = True
+        # 初始化旋转四元数
+        self.rotation = None
+        self.adjust_view_matrix()
 
     def __setattr__(self, key, value):
-        if key in ['position', 'rotation', 'fov', 'aspect_ratio', 'near_clip',
-                   'far_clip', 'projection_type', 'pitch', 'yaw']:
+        if key in ['position']:
             self.is_dirty = True
         super(CameraSetting, self).__setattr__(key, value)
-
-    def update_direction_vectors(self):
-        """根据当前的偏航和俯仰角度更新前、上、右向量，并同步更新旋转四元数"""
-        # 计算前向量
-        front = np.array([
-            cos(radians(self.yaw)) * cos(radians(self.pitch)),
-            sin(radians(self.pitch)),
-            sin(radians(self.yaw)) * cos(radians(self.pitch))
-        ])
-        self.front = self.normalize(front)
-        # 计算右向量
-        self.right = self.normalize(np.cross(self.front, np.array([0.0, 1.0, 0.0])))
-        # 计算上向量
-        self.up = self.normalize(np.cross(self.right, self.front))
-
-        # 同步更新旋转四元数
-        self.rotation = Quaternion.from_euler_angles(self.pitch, self.yaw, 0.0)
-
+       
     def calculate_view_matrix(self):
-        """根据位置和方向向量计算视图矩阵"""
-        if self.is_dirty:
-            self.update_direction_vectors()
+        """根据四元数和位置计算视图矩阵"""
+        forward = self.get_forward()  # 从四元数中计算 forward
+        print("forward: ", forward)
+        right = self.normalize(np.cross(self.up, forward))
+        up = self.normalize(np.cross(forward, right))
 
-        # 计算视图矩阵
-        # 使用 LookAt 矩阵的计算方式
-        target = self.position + self.front
-        z_axis = self.normalize(self.position - target)  # forward
-        x_axis = self.normalize(np.cross(self.up, z_axis))  # right
-        y_axis = np.cross(z_axis, x_axis)  # up
-
+        # 构造视图矩阵
         self.view_matrix = np.array([
+            [right[0], up[0], forward[0], 0],
+            [right[1], up[1], forward[1], 0],
+            [right[2], up[2], forward[2], 0],
+            [-np.dot(right, self.position), -np.dot(up, self.position), -np.dot(forward, self.position), 1]
+        ])
+
+        print("rotation like view_matrix: ", self.view_matrix)
+        z_axis = self.normalize(self.position - self.front)
+        print("z_axis: ", z_axis)
+        x_axis = self.normalize(np.cross(self.up, z_axis))
+        y_axis = self.normalize(np.cross(z_axis, x_axis))
+        tmp_matrix = np.array([
             [x_axis[0], y_axis[0], z_axis[0], 0],
             [x_axis[1], y_axis[1], z_axis[1], 0],
             [x_axis[2], y_axis[2], z_axis[2], 0],
             [-np.dot(x_axis, self.position), -np.dot(y_axis, self.position), -np.dot(z_axis, self.position), 1]
         ])
 
+        print("no rotation like view_matrix: ", tmp_matrix)
+        # self.view_matrix = tmp_matrix
         self.is_dirty = False
+
+    def adjust_view_matrix(self):
+        self.rotation = self.look_at_rotation(self.position, self.position + self.front, self.up)
+        self.calculate_view_matrix()
 
     def calculate_projection_matrix(self):
         """计算投影矩阵"""
@@ -196,10 +147,9 @@ class CameraSetting(Component):
                 [0, 0, -2 * self.far_clip * self.near_clip / (self.far_clip - self.near_clip), 0]
             ])
         elif self.projection_type == ProjectionType.ORTHOGRAPHIC:
-            # 这里可以根据需要调整正交投影参数
             left, right = -10.0, 10.0
             bottom, top = -10.0, 10.0
-            near, far = self.near_clip, self.far_clip
+            near, far = 0.1, 100.0
             self.projection_matrix = np.array([
                 [2.0 / (right - left), 0, 0, -(right + left) / (right - left)],
                 [0, 2.0 / (top - bottom), 0, -(top + bottom) / (top - bottom)],
@@ -209,27 +159,27 @@ class CameraSetting(Component):
         else:
             raise ValueError(f"Unknown projection type: {self.projection_type}")
 
-    def look_at(self, target, up=np.array([0.0, 1.0, 0.0])):
+    def look_at(self, target):
         """类似 Unity 的 LookAt 方法，更新相机朝向"""
-        direction = self.normalize(target - self.position)
-        # 计算四元数旋转，从默认前方向 [0,0,-1] 到目标方向
-        # 这里简化为仅计算方向，不考虑上向量的旋转
-        # 更复杂的实现需要考虑上向量，生成合适的旋转四元数
-        forward = direction
+        self.front = self.normalize(target - self.position)
+        self.rotation = self.look_at_rotation(self.position, target, self.up)
+        self.calculate_view_matrix()
+
+    def look_at_rotation(self, position, target, up):
+        """生成一个从 position 指向 target 的四元数旋转"""
+        forward = self.normalize(target - position)
         right = self.normalize(np.cross(up, forward))
-        recalculated_up = np.cross(forward, right)
+        up = np.cross(forward, right)
 
         # 构造旋转矩阵
         rotation_matrix = np.array([
-            [right[0], recalculated_up[0], -forward[0]],
-            [right[1], recalculated_up[1], -forward[1]],
-            [right[2], recalculated_up[2], -forward[2]],
+            [right[0], up[0], -forward[0]],
+            [right[1], up[1], -forward[1]],
+            [right[2], up[2], -forward[2]],
         ])
 
         # 将旋转矩阵转换为四元数
-        self.rotation = self.matrix_to_quaternion(rotation_matrix).normalize()
-        self.is_dirty = True
-        self.calculate_view_matrix()
+        return self.matrix_to_quaternion(rotation_matrix)
 
     def matrix_to_quaternion(self, matrix):
         """将旋转矩阵转换为四元数"""
@@ -261,11 +211,16 @@ class CameraSetting(Component):
             y = (m[1, 2] + m[2, 1]) / s
             z = 0.25 * s
 
-        return Quaternion(w, x, y, z)
+        return np.array([w, x, y, z])
 
     def get_forward(self):
         """通过四元数获取前方向"""
-        return self.front
+        w, x, y, z = self.rotation
+        return np.array([
+            2 * (x * z + w * y),
+            2 * (y * z - w * x),
+            1 - 2 * (x * x + y * y)
+        ])
 
     def normalize(self, vec):
         """归一化向量"""

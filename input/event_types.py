@@ -15,3 +15,14 @@ class KeyAction(Enum):
     PRESSED = auto()
     REPEAT = auto()
     RELEASED = auto()
+
+
+class MouseButton(Enum):
+    LEFT = auto()
+    RIGHT = auto()
+    MIDDLE = auto()
+
+
+class MouseAction(Enum):
+    PRESSED = auto()
+    RELEASED = auto()

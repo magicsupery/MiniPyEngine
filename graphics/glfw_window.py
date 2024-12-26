@@ -4,7 +4,7 @@ import glfw
 from graphics.window import Window
 
 from collections import deque
-from input.event_types import Key, KeyAction
+from input.event_types import Key, KeyAction, MouseAction, MouseButton
 
 
 class GlfwWindow(Window):
@@ -21,10 +21,24 @@ class GlfwWindow(Window):
         glfw.KEY_D: Key.D
     }
 
+    MOUSE_ACTION_TRANSFORM_MAP = {
+        glfw.PRESS: MouseAction.PRESSED,
+        glfw.RELEASE: MouseAction.RELEASED
+    }
+
+    MOUSE_BUTTON_TRANSFORM_MAP = {
+        glfw.MOUSE_BUTTON_LEFT: MouseButton.LEFT,
+        glfw.MOUSE_BUTTON_RIGHT: MouseButton.RIGHT,
+        glfw.MOUSE_BUTTON_MIDDLE: MouseButton.MIDDLE
+    }
+
     def __init__(self):
         super().__init__()
+        self.last_cursor_pos = None
         self.window = None
         self.keyboard_events = deque()
+        self.mouse_button_events = deque()
+        self.mouse_move_events = deque()
 
     def initialize(self, width, height, title):
         if not glfw.init():
@@ -46,6 +60,8 @@ class GlfwWindow(Window):
         glfw.make_context_current(self.window)
 
         glfw.set_key_callback(self.window, self.key_callback)
+        glfw.set_mouse_button_callback(self.window, self.mouse_button_callback)
+        glfw.set_cursor_pos_callback(self.window, self.cursor_position_callback)
         return
 
     def poll_events(self):
@@ -67,6 +83,14 @@ class GlfwWindow(Window):
         if self.keyboard_events:
             yield self.keyboard_events.popleft()
 
+    def pop_mouse_button_event(self):
+        if self.mouse_button_events:
+            yield self.mouse_button_events.popleft()
+
+    def pop_mouse_move_event(self):
+        if self.mouse_move_events:
+            yield self.mouse_move_events.popleft()
+
     def key_callback(self, window, key, scancode, action, mods):
         if key not in self.KEY_TRANSFORM_MAP or action not in self.ACTION_TRANSFORM_MAP:
             return
@@ -75,4 +99,28 @@ class GlfwWindow(Window):
         abstract_action = self.ACTION_TRANSFORM_MAP[action]
 
         self.keyboard_events.append((abstract_key, abstract_action))
+        return
+
+    def mouse_button_callback(self, window, button, action, mods):
+        print(button, action)
+        if button not in self.MOUSE_BUTTON_TRANSFORM_MAP or action not in self.MOUSE_ACTION_TRANSFORM_MAP:
+            return
+
+        print(11)
+        abstract_button = self.MOUSE_BUTTON_TRANSFORM_MAP[button]
+        abstract_action = self.MOUSE_ACTION_TRANSFORM_MAP[action]
+
+        self.mouse_button_events.append((abstract_button, abstract_action))
+        return
+
+    # 鼠标移动回调函数
+    def cursor_position_callback(self, window, xpos, ypos):
+        if self.last_cursor_pos is None:
+            self.last_cursor_pos = (xpos, ypos)
+            return
+        last_x, last_y = self.last_cursor_pos
+        delta_x = xpos - last_x
+        delta_y = ypos - last_y
+        self.mouse_move_events.append((xpos, ypos, delta_x, delta_y))
+        self.last_cursor_pos = (xpos, ypos)
         return

@@ -39,5 +39,13 @@ class Window(ABC):
         pass
 
     @abstractmethod
+    def pop_mouse_button_event(self):
+        pass
+
+    @abstractmethod
+    def pop_mouse_move_event(self):
+        pass
+   
+    @abstractmethod
     def cleanup(self):
         pass

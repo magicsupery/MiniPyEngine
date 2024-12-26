@@ -28,6 +28,11 @@ class RenderSystem(System):
         self.renderer.setup_camera(self.main_camera.components[CameraSetting])
 
     def update(self, delta_time):
+        main_camera_setting = self.main_camera.CameraSetting
+        if main_camera_setting.is_dirty:
+            main_camera_setting.calculate_view_matrix()
+            self.renderer.setup_camera(main_camera_setting)
+
         render_objects = []
         mesh_entities = GD.ecs_manager.get_entities_with_component(Mesh)
         for entity in mesh_entities:

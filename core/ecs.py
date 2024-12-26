@@ -59,5 +59,12 @@ class ECSManager(object):
     def add_system(self, system):
         self.systems.append(system)
 
+    def get_system(self, system_type):
+        for system in self.systems:
+            if isinstance(system, system_type):
+                return system
+
+        return None
+
     def get_systems(self):
         return self.systems
