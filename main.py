@@ -3,8 +3,9 @@ import numpy as np
 
 from Entity.camera import Camera
 from Entity.gameobject import GameObject
-from components.texture import Texture
+from components.camera_setting import CameraSetting
 from components.mesh import Mesh
+from components.transform import Transform
 from core.main_loop import MainLoop
 from core.ecs import ECSManager
 from systems.input_system import InputSystem
@@ -76,7 +77,7 @@ class CameraMovementModule(LogicModule):
         # mouse events
         def camera_mouse_move(xpos, ypos, delta_x, delta_y):
             if self.need_rotate:
-                camera_setting = GD.main_camera.CameraSetting
+                camera_setting = GD.main_camera.get_component(CameraSetting)
                 camera_setting.yaw += delta_x * self.rotation_sensitive
                 camera_setting.pitch += delta_y * self.rotation_sensitive
 
@@ -103,7 +104,7 @@ class CameraMovementModule(LogicModule):
         if len(self.horizontal_directions) == 0 and len(self.vertical_directions) == 0:
             return
 
-        camera_setting = GD.main_camera.CameraSetting
+        camera_setting = GD.main_camera.get_component(CameraSetting)
         if len(self.horizontal_directions) > 0:
             last_horizontal_direction = self.horizontal_directions[-1]
             if last_horizontal_direction == CameraMoveDirection.LEFT:
@@ -136,10 +137,10 @@ def main():
     logic_system.add_logic_module(camera_move_module)
 
     player = ecs.create_entity(GameObject)
-    ecs.add_component(player, Texture("player.png"))
-    player.Transform.position = [0.0, 0.0, -10.0]
-    player.Transform.rotation = [0.0, 0.0, 0.0]
-    player.Transform.scale = [1.0, 1.0, 1.0]
+    player_trans = player.get_component(Transform)
+    player_trans.position = [0.0, 0.0, -10.0]
+    player_trans.rotation = [0.0, 0.0, 0.0]
+    player_trans.scale = [1.0, 1.0, 1.0]
     vertices = np.array([
         -0.5, -0.5, 0.0,
         0.5, -0.5, 0.0,

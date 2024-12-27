@@ -102,11 +102,9 @@ class GlfwWindow(Window):
         return
 
     def mouse_button_callback(self, window, button, action, mods):
-        print(button, action)
         if button not in self.MOUSE_BUTTON_TRANSFORM_MAP or action not in self.MOUSE_ACTION_TRANSFORM_MAP:
             return
 
-        print(11)
         abstract_button = self.MOUSE_BUTTON_TRANSFORM_MAP[button]
         abstract_action = self.MOUSE_ACTION_TRANSFORM_MAP[action]
 

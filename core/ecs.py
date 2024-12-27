@@ -9,6 +9,10 @@ class Component(object):
         if component_id is None:
             component_id = ObjectId()
         self.component_id = component_id
+        self.owner = None
+
+    def set_owner(self, owner):
+        self.owner = owner
 
 
 class Entity(object):
@@ -22,8 +26,14 @@ class Entity(object):
         return self.entity_id
 
     def add_component(self, component):
+        assert (isinstance(component, Component))
+        assert (type(component) not in self.components)
         self.components[type(component)] = component
-        super().__setattr__(type(component).__name__, component)
+        # super().__setattr__(type(component).__name__, component)
+        component.set_owner(self)
+
+    def get_component(self, component_type):
+        return self.components.get(component_type, None)
 
 
 class System(object):
