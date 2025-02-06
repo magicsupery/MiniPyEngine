@@ -4,9 +4,10 @@ from abc import ABC, abstractmethod
 
 
 class RenderObject:
-    def __init__(self, model_matrix, mesh):
+    def __init__(self, model_matrix, mesh, material):
         self.model_matrix = model_matrix
         self.mesh = mesh
+        self.material = material
 
 
 class Renderer(ABC):
@@ -16,9 +17,13 @@ class Renderer(ABC):
         pass
 
     @abstractmethod
-    def setup_camera(self, camera_setting):
+    def add_shader(self, shader):
         pass
    
+    @abstractmethod
+    def setup_camera(self, camera_setting):
+        pass
+
     @abstractmethod
     def render(self, render_objects):
         pass

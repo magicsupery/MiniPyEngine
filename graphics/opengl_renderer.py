@@ -7,10 +7,19 @@ from graphics.factory import create_window
 
 
 class OpenGLRenderObject(RenderObject):
-    def __init__(self, model_matrix, mesh):
-        super().__init__(model_matrix, mesh)
+    def __init__(self, model_matrix, mesh, material):
+        super().__init__(model_matrix, mesh, material)
 
-    def render(self, shader_program):
+    def render(self):
+        shader = self.material.shader
+        shader.use()
+
+        # bind texture 
+        if self.material.texture is not None:
+            glActiveTexture(GL_TEXTURE0)
+            glBindTexture(GL_TEXTURE_2D, self.material.texture.id)
+            glUniform1i(glGetUniformLocation(shader.shader_program, "texture0"), 0)
+
         VAO = glGenVertexArrays(1)
         VBO = glGenBuffers(1)
         EBO = glGenBuffers(1)
@@ -24,16 +33,21 @@ class OpenGLRenderObject(RenderObject):
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, self.mesh.indices.nbytes, self.mesh.indices, GL_STATIC_DRAW)
 
         # position attribute
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * self.mesh.vertices.itemsize, c_void_p(0))
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * self.mesh.vertices.itemsize, c_void_p(0))
         glEnableVertexAttribArray(0)
 
-        model_loc = glGetUniformLocation(shader_program, "model")
+        # uv attribute
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * self.mesh.vertices.itemsize,
+                              c_void_p(3 * self.mesh.vertices.itemsize))
+        glEnableVertexAttribArray(1)
+
+        model_loc = glGetUniformLocation(shader.shader_program, "model")
         glUniformMatrix4fv(model_loc, 1, GL_FALSE, self.model_matrix)
 
         if len(self.mesh.indices) > 0:
             glDrawElements(GL_TRIANGLES, len(self.mesh.indices), GL_UNSIGNED_INT, None)
         else:
-            glDrawArrays(GL_TRIANGLES, 0, len(self.mesh.vertices) // 3)
+            glDrawArrays(GL_TRIANGLES, 0, len(self.mesh.vertices) // 5)
 
         glDeleteVertexArrays(1, [VAO])
         glDeleteBuffers(1, [VBO])
@@ -42,12 +56,12 @@ class OpenGLRenderObject(RenderObject):
 
 class OpenGLRenderer(Renderer):
     def __init__(self):
-        self.shader_program = None
         self.title = None
         self.height = None
         self.width = None
         self.window = None
         self.render_objects = []
+        self.shaders = []
 
     def initialize(self, width, height, title):
         self.width = width
@@ -61,17 +75,15 @@ class OpenGLRenderer(Renderer):
         self.init_opengl()
 
         # init shaders
-        self.shader_program = self.create_shader_program("graphics/shaders/vertex_shader.glsl",
-                                                         "graphics/shaders/fragment_shader.glsl")
+        # self.shader_program = self.create_shader_program("graphics/shaders/vertex_shader.glsl",
+        #                                                  "graphics/shaders/fragment_shader.glsl")
 
     def render(self, render_object_datas):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        glUseProgram(self.shader_program)
-
         self.render_objects = []
         for render_data in render_object_datas:
-            render_object = OpenGLRenderObject(render_data[0], render_data[1])
-            render_object.render(self.shader_program)
+            render_object = OpenGLRenderObject(render_data[0], render_data[1], render_data[2])
+            render_object.render()
             self.render_objects.append(render_object)
 
         self.window.swap_buffers()
@@ -117,10 +129,16 @@ class OpenGLRenderer(Renderer):
 
         return shader_program
 
+    def add_shader(self, shader):
+        self.shaders.append(shader)
+
     def setup_camera(self, camera_setting):
-        glUseProgram(self.shader_program)
-        camera_loc = glGetUniformLocation(self.shader_program, "view")
-        glUniformMatrix4fv(camera_loc, 1, GL_FALSE, camera_setting.view_matrix)
-        projection_loc = glGetUniformLocation(self.shader_program, "projection")
-        glUniformMatrix4fv(projection_loc, 1, GL_FALSE, camera_setting.projection_matrix)
+        for shader in self.shaders:
+            shader.use()
+            camera_loc = glGetUniformLocation(shader.shader_program, "view")
+            glUniformMatrix4fv(camera_loc, 1, GL_FALSE, camera_setting.view_matrix)
+            projection_loc = glGetUniformLocation(shader.shader_program, "projection")
+            glUniformMatrix4fv(projection_loc, 1, GL_FALSE, camera_setting.projection_matrix)
+
+        glUseProgram(0)
         return

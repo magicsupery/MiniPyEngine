@@ -5,6 +5,7 @@ class GlobalData(object):
         self.ecs_manager = None
         self.renderer = None
         self.main_camera = None
+        self.resource_manager = None
 
 
 global_data = GlobalData()

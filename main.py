@@ -13,6 +13,7 @@ from systems.logic_system import LogicSystem, LogicModule
 from systems.render_system import RenderSystem
 from Context.context import global_data as GD
 from input.event_types import Key, KeyAction, MouseButton, MouseAction
+from resource_manager.file_resource_manager import FileResourceManager
 
 from enum import Enum, auto
 
@@ -121,8 +122,11 @@ class CameraMovementModule(LogicModule):
 
 
 def main():
+    resource_manager = FileResourceManager()
+    GD.resource_manager = resource_manager
     ecs = ECSManager()
     GD.ecs_manager = ecs
+
     GD.ecs_manager.create_entity(Camera)
 
     ecs.add_system(RenderSystem())
@@ -142,11 +146,18 @@ def main():
     player_trans.rotation = [0.0, 0.0, 0.0]
     player_trans.scale = [1.0, 1.0, 1.0]
     vertices = np.array([
-        -0.5, -0.5, 0.0,
-        0.5, -0.5, 0.0,
-        0.5, 0.5, 0.0
+        -0.5, -0.5, 0.0, 0.0, 0.0,
+        0.5, -0.5, 0.0, 1.0, 0.0,
+        0.5, 0.5, 0.0, 1.0, 1.0
     ], dtype=np.float32)
     ecs.add_component(player, Mesh(vertices))
+
+    material_component = GD.resource_manager.load_material(
+        "resources/textures/brick.jpg",
+        "resources/shaders/vertex_shader.glsl",
+        "resources/shaders/fragment_shader.glsl")
+
+    ecs.add_component(player, material_component)
 
     # player1 = ecs.create_entity()
     # ecs.add_component(player1, Transform([0.0, 0.0, 0.0]))

@@ -139,7 +139,7 @@ class CameraSetting(Component):
         self.calculate_projection_matrix()
         self.calculate_view_matrix()
 
-        self.is_dirty = False
+        self.is_dirty = True
 
     def __setattr__(self, key, value):
         if key in ['position', 'rotation', 'fov', 'aspect_ratio', 'near_clip',
@@ -228,7 +228,7 @@ class CameraSetting(Component):
 
         # 将旋转矩阵转换为四元数
         self.rotation = self.matrix_to_quaternion(rotation_matrix).normalize()
-        self.is_dirty = True
+        self.is_dirty = False
         self.calculate_view_matrix()
 
     def matrix_to_quaternion(self, matrix):

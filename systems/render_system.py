@@ -2,6 +2,7 @@
 import numpy as np
 
 from components.camera_setting import CameraSetting
+from components.material import Material
 from components.mesh import Mesh
 from components.transform import Transform
 from core.ecs import System
@@ -39,6 +40,9 @@ class RenderSystem(System):
             transform = entity.get_component(Transform)
             assert (transform is not None)
             mesh = entity.get_component(Mesh)
-            render_objects.append((transform.calculate_model_matrix(), mesh))
+            assert (mesh is not None)
+            material = entity.get_component(Material)
+            assert (material is not None)
+            render_objects.append((transform.calculate_model_matrix(), mesh, material))
 
         self.renderer.render(render_objects)

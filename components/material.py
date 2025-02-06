@@ -6,12 +6,7 @@ from core.ecs import Component
 
 
 class Material(Component):
-    def __init__(self, color=None, diffuse=None):
+    def __init__(self, texture=None, shader=None):
         super().__init__()
-        if color is None:
-            color = [1.0, 1.0, 1.0]
-        self.color = np.array(color, dtype=np.float32)
-        self.diffuse = diffuse
-
-    def set_diffuse(self, diffuse):
-        self.diffuse = diffuse
+        self.texture = texture
+        self.shader = shader
