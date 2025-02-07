@@ -152,10 +152,7 @@ def main():
     ], dtype=np.float32)
     ecs.add_component(player, Mesh(vertices))
 
-    material_component = GD.resource_manager.load_material(
-        "resources/textures/brick.jpg",
-        "resources/shaders/vertex_shader.glsl",
-        "resources/shaders/fragment_shader.glsl")
+    material_component = GD.resource_manager.load_material_from_config("resources/shaders/my_first_shader.json")
 
     ecs.add_component(player, material_component)
 

@@ -6,7 +6,7 @@ from core.ecs import Component
 
 
 class Material(Component):
-    def __init__(self, texture=None, shader=None):
+    def __init__(self, shader=None):
         super().__init__()
-        self.texture = texture
         self.shader = shader
+        self.properties = {}

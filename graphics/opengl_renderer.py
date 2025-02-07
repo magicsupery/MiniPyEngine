@@ -4,6 +4,7 @@ from ctypes import c_void_p
 from OpenGL.GL import *
 from graphics.renderer import Renderer, RenderObject
 from graphics.factory import create_window
+from resource_manager.texture import Texture
 
 
 class OpenGLRenderObject(RenderObject):
@@ -14,11 +15,33 @@ class OpenGLRenderObject(RenderObject):
         shader = self.material.shader
         shader.use()
 
-        # bind texture 
-        if self.material.texture is not None:
-            glActiveTexture(GL_TEXTURE0)
-            glBindTexture(GL_TEXTURE_2D, self.material.texture.id)
-            glUniform1i(glGetUniformLocation(shader.shader_program, "texture0"), 0)
+        texture_unit_index = 0  # 从 0 号纹理单元开始
+        for prop_name, prop_value in self.material.properties.items():
+            if prop_value is None:
+                continue
+
+            # 简单判断类型：如果是 Texture，我们假设 prop_value 为 Texture 实例
+            # 如果是 float，我们用 glUniform1f 绑定
+            if isinstance(prop_value, Texture):  # 说明是 Texture (带 texture_id)
+                tex_location = glGetUniformLocation(shader.shader_program, prop_name)
+                if tex_location == -1:
+                    # 如果 Shader 里没有对应 uniform，可能要报个警告或者跳过
+                    # print(f"Warning: uniform '{prop_name}' not found in Shader")
+                    continue
+
+                glActiveTexture(GL_TEXTURE0 + texture_unit_index)
+                glBindTexture(GL_TEXTURE_2D, prop_value.id)
+                glUniform1i(tex_location, texture_unit_index)
+                texture_unit_index += 1
+
+            elif isinstance(prop_value, float):
+                # 假设这个 uniform 在 GLSL 中也是 float
+                float_location = glGetUniformLocation(shader.shader_program, prop_name)
+                if float_location != -1:
+                    glUniform1f(float_location, prop_value)
+
+        model_loc = glGetUniformLocation(shader.shader_program, "model")
+        glUniformMatrix4fv(model_loc, 1, GL_FALSE, self.model_matrix)
 
         VAO = glGenVertexArrays(1)
         VBO = glGenBuffers(1)
@@ -40,9 +63,6 @@ class OpenGLRenderObject(RenderObject):
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * self.mesh.vertices.itemsize,
                               c_void_p(3 * self.mesh.vertices.itemsize))
         glEnableVertexAttribArray(1)
-
-        model_loc = glGetUniformLocation(shader.shader_program, "model")
-        glUniformMatrix4fv(model_loc, 1, GL_FALSE, self.model_matrix)
 
         if len(self.mesh.indices) > 0:
             glDrawElements(GL_TRIANGLES, len(self.mesh.indices), GL_UNSIGNED_INT, None)

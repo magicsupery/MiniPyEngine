@@ -1,0 +1,17 @@
+{
+  "name": "MyFirstShader",
+  "vertex": "resources/shaders/vertex_shader.glsl",
+  "fragment": "resources/shaders/fragment_shader.glsl",
+  "properties": [
+    {
+      "type": "texture2D",
+      "name": "MainTex",
+      "default": "resources/textures/brick.jpg"
+    },
+    {
+      "type": "float",
+      "name": "MyFloatParam",
+      "default": 0.5
+    }
+  ]
+}
