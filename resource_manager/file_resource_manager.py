@@ -3,8 +3,9 @@ import json
 import os
 
 from util.singleton import SingletonMeta
-from resource_manager.texture import Texture
-from resource_manager.shader import Shader
+from config.renderer import RendererConfig
+from resource_manager.opengl_texture import OpenGLTexture
+from resource_manager.opengl_shader import OpenGLShader
 from components.material import Material
 from Context.context import global_data as GD
 
@@ -18,14 +19,24 @@ class FileResourceManager(object, metaclass=SingletonMeta):
     def load_texture(self, file_path):
         if file_path in self.texture_map:
             return self.texture_map[file_path]
-        self.texture_map[file_path] = Texture(file_path)
+        if RendererConfig.RendererType == RendererConfig.RendererType.OPENGL:
+            self.texture_map[file_path] = OpenGLTexture(file_path)
+        else:
+            raise NotImplementedError(f"Renderer type {RendererConfig.RendererType} not supported yet.")
         return self.texture_map[file_path]
 
     def load_shader(self, vertex_path, fragment_path):
         key = (vertex_path, fragment_path)
         if key in self.shader_map:
             return self.shader_map[key]
-        self.shader_map[key] = Shader(vertex_path, fragment_path)
+        if RendererConfig.RendererType == RendererConfig.RendererType.OPENGL:
+            shader = OpenGLShader()
+            # TODO 以后再考虑加载策略
+            shader.load(vertex_path, fragment_path)
+            shader.compile()
+            self.shader_map[key] = shader
+        else:
+            raise NotImplementedError(f"Renderer type {RendererConfig.RendererType} not supported yet.")
         GD.renderer.add_shader(self.shader_map[key])
         return self.shader_map[key]
 

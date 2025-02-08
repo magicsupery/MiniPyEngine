@@ -4,7 +4,8 @@ from ctypes import c_void_p
 from OpenGL.GL import *
 from graphics.renderer import Renderer, RenderObject
 from graphics.factory import create_window
-from resource_manager.texture import Texture
+# TODO 目前感觉graphics不应该import上层的resource_manager，要么是texture的位置放置不对，要么是这里的依赖不应该出现
+from resource_manager.opengl_texture import OpenGLTexture
 
 
 class OpenGLRenderObject(RenderObject):
@@ -22,11 +23,11 @@ class OpenGLRenderObject(RenderObject):
 
             # 简单判断类型：如果是 Texture，我们假设 prop_value 为 Texture 实例
             # 如果是 float，我们用 glUniform1f 绑定
-            if isinstance(prop_value, Texture):  # 说明是 Texture (带 texture_id)
+            if isinstance(prop_value, OpenGLTexture):  # 说明是 Texture (带 texture_id)
                 tex_location = glGetUniformLocation(shader.shader_program, prop_name)
                 if tex_location == -1:
                     # 如果 Shader 里没有对应 uniform，可能要报个警告或者跳过
-                    # print(f"Warning: uniform '{prop_name}' not found in Shader")
+                    print(f"Warning: uniform '{prop_name}' not found in Shader")
                     continue
 
                 glActiveTexture(GL_TEXTURE0 + texture_unit_index)
