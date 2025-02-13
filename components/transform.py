@@ -10,18 +10,24 @@ class Transform(Component):
         self.rotation = rotation if rotation is not None else [0.0, 0.0, 0.0]
         self.scale = scale if scale is not None else [1.0, 1.0, 1.0]
         self.dirty = True
-        self.model_matrix = None
+        self.local_matrix = None  # parent-child
+        self.world_matrix = None
 
     def __setattr__(self, key, value):
         if key in ['position', 'rotation', 'scale']:
-            self.dirty = True
+            self.mark_dirty()
         super(Transform, self).__setattr__(key, value)
 
-    def calculate_model_matrix(self):
+    def mark_dirty(self):
+        self.dirty = True
+        if self.owner:
+            for child in self.owner.children:
+                child.get_component(Transform).mark_dirty()
 
-        if not self.dirty:
-            return self.model_matrix
+    def clear_dirty(self):
+        self.dirty = False
 
+    def calculate_local_matrix(self):
         # Notice ！！！
         # 缩放矩阵
         scale = np.array([
@@ -72,6 +78,36 @@ class Transform(Component):
         rotation = np.matmul(np.matmul(rotation_y, rotation_x), rotation_z)
 
         # 最终模型矩阵：模型 = 平移 * 旋转 * 缩放
-        self.model_matrix = (np.matmul(np.matmul(translation, rotation), scale)).flatten('F')
-        self.dirty = False
-        return self.model_matrix
+        return (np.matmul(np.matmul(translation, rotation), scale))
+
+    def calculate_world_matrix(self):
+        if not self.dirty:
+            return self.world_matrix
+
+        self.local_matrix = self.calculate_local_matrix()
+        self.world_matrix = self.local_matrix
+        if self.owner.parent is not None:
+            parent_world_matrix = self.owner.parent.get_component(Transform).calculate_world_matrix()
+            self.world_matrix = np.matmul(parent_world_matrix, self.local_matrix)
+
+        self.clear_dirty()
+
+        return self.world_matrix
+
+    def update_local_transform(self):
+        """
+        This method is called when a child object is added to a parent object.
+        It updates the position, rotation, and scale of the child object relative to its parent.
+        """
+        if self.owner.parent is not None:
+            # If there is a parent, update the position, rotation, and scale relative to the parent.
+            parent_transform = self.owner.parent.get_component(Transform)
+
+            self.position = np.subtract(self.position, parent_transform.position)
+
+            self.rotation = np.subtract(self.rotation, parent_transform.rotation)
+
+            self.scale = np.divide(self.scale, parent_transform.scale)
+
+            # Mark as dirty to recompute world matrix later
+            self.mark_dirty()

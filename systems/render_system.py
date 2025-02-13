@@ -43,6 +43,6 @@ class RenderSystem(System):
             assert (mesh is not None)
             material = entity.get_component(Material)
             assert (material is not None)
-            render_objects.append((transform.calculate_model_matrix(), mesh, material))
+            render_objects.append((transform.calculate_world_matrix().flatten("F"), mesh, material))
 
         self.renderer.render(render_objects)

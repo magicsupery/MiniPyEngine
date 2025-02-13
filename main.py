@@ -54,10 +54,16 @@ class CameraMovementModule(LogicModule):
             self.vertical_directions.remove(CameraMoveDirection.BACKWARD)
 
         def camera_left_pressed():
-            self.horizontal_directions.append(CameraMoveDirection.LEFT)
+            # self.horizontal_directions.append(CameraMoveDirection.LEFT)
+            result = GD.ecs_manager.entities[1].get_component(Transform).position[0] - 0.5
+            GD.ecs_manager.entities[1].get_component(Transform).position = [result, 0.0, -10.0]
+            print(GD.ecs_manager.entities[1])
+            print(GD.ecs_manager.entities[1].get_component(Transform).position)
+            pass
 
         def camera_left_released():
-            self.horizontal_directions.remove(CameraMoveDirection.LEFT)
+            # self.horizontal_directions.remove(CameraMoveDirection.LEFT)
+            pass
 
         def camera_right_pressed():
             self.horizontal_directions.append(CameraMoveDirection.RIGHT)
@@ -156,14 +162,16 @@ def main():
 
     ecs.add_component(player, material_component)
 
-    # player1 = ecs.create_entity()
-    # ecs.add_component(player1, Transform([0.0, 0.0, 0.0]))
-    # vertices = np.array([
-    #     -0.5, -0.5, 0.0,
-    #     0.3, -10.0, 0.0,
-    #     0.5, 0.5, 0.0
-    # ], dtype=np.float32)
-    # ecs.add_component(player1, Mesh(vertices))
+    player1 = ecs.create_entity(GameObject)
+    player_trans = player1.get_component(Transform)
+    player_trans.position = [1.0, 0.0, -10.0]
+    player_trans.rotation = [0.0, 0.0, 0.0]
+    player_trans.scale = [1.0, 1.0, 1.0]
+    ecs.add_component(player1, Mesh(vertices))
+
+    ecs.add_component(player1, material_component)
+
+    player.add_child(player1)
 
     main_loop = MainLoop()
     main_loop.run()
