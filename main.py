@@ -14,6 +14,7 @@ from systems.render_system import RenderSystem
 from Context.context import global_data as GD
 from input.event_types import Key, KeyAction, MouseButton, MouseAction
 from resource_manager.file_resource_manager import FileResourceManager
+from util.quaternion import Quaternion
 
 from enum import Enum, auto
 
@@ -54,16 +55,10 @@ class CameraMovementModule(LogicModule):
             self.vertical_directions.remove(CameraMoveDirection.BACKWARD)
 
         def camera_left_pressed():
-            # self.horizontal_directions.append(CameraMoveDirection.LEFT)
-            result = GD.ecs_manager.entities[1].get_component(Transform).position[0] - 0.5
-            GD.ecs_manager.entities[1].get_component(Transform).position = [result, 0.0, -10.0]
-            print(GD.ecs_manager.entities[1])
-            print(GD.ecs_manager.entities[1].get_component(Transform).position)
-            pass
+            self.horizontal_directions.append(CameraMoveDirection.LEFT)
 
         def camera_left_released():
-            # self.horizontal_directions.remove(CameraMoveDirection.LEFT)
-            pass
+            self.horizontal_directions.remove(CameraMoveDirection.LEFT)
 
         def camera_right_pressed():
             self.horizontal_directions.append(CameraMoveDirection.RIGHT)
@@ -85,14 +80,19 @@ class CameraMovementModule(LogicModule):
         def camera_mouse_move(xpos, ypos, delta_x, delta_y):
             if self.need_rotate:
                 camera_setting = GD.main_camera.get_component(CameraSetting)
-                camera_setting.yaw += delta_x * self.rotation_sensitive
-                camera_setting.pitch += delta_y * self.rotation_sensitive
+                
+                # 使用新的四元数系统进行相机旋转
+                # 更新偏航角和俯仰角
+                new_yaw = camera_setting.yaw + delta_x * self.rotation_sensitive
+                new_pitch = camera_setting.pitch + delta_y * self.rotation_sensitive
 
+                # 约束俯仰角
                 if self.constrain_pitch:
-                    if camera_setting.pitch > 89.0:
-                        camera_setting.pitch = 89.0
-                    if camera_setting.pitch < -89.0:
-                        camera_setting.pitch = -89.0
+                    new_pitch = max(-89.0, min(89.0, new_pitch))
+
+                # 使用新的四元数方法设置旋转
+                new_rotation = Quaternion.from_euler_angles(new_pitch, new_yaw, 0.0)
+                camera_setting.set_rotation_quaternion(new_rotation)
 
         input_system.register_mouse_move_listener(camera_mouse_move)
 
@@ -112,6 +112,8 @@ class CameraMovementModule(LogicModule):
             return
 
         camera_setting = GD.main_camera.get_component(CameraSetting)
+        
+        # 相机移动逻辑保持不变，因为我们仍然使用front和right向量
         if len(self.horizontal_directions) > 0:
             last_horizontal_direction = self.horizontal_directions[-1]
             if last_horizontal_direction == CameraMoveDirection.LEFT:
@@ -146,11 +148,11 @@ def main():
     camera_move_module = CameraMovementModule()
     logic_system.add_logic_module(camera_move_module)
 
-    player = ecs.create_entity(GameObject)
-    player_trans = player.get_component(Transform)
-    player_trans.position = [0.0, 0.0, -10.0]
-    player_trans.rotation = [0.0, 0.0, 0.0]
-    player_trans.scale = [1.0, 1.0, 1.0]
+    # 创建第一个游戏对象
+    player = ecs.create_entity(GameObject, name="Player")
+    player.transform.position = [0.0, 0.0, -10.0]
+    player.transform.rotation = [0.0, 0.0, 0.0]
+    player.transform.scale = [1.0, 1.0, 1.0]
     vertices = np.array([
         -0.5, -0.5, 0.0, 0.0, 0.0,
         0.5, -0.5, 0.0, 1.0, 0.0,
@@ -162,16 +164,17 @@ def main():
 
     ecs.add_component(player, material_component)
 
-    player1 = ecs.create_entity(GameObject)
-    player_trans = player1.get_component(Transform)
-    player_trans.position = [1.0, 0.0, -10.0]
-    player_trans.rotation = [0.0, 0.0, 0.0]
-    player_trans.scale = [1.0, 1.0, 1.0]
+    # 创建第二个游戏对象作为子物体
+    player1 = ecs.create_entity(GameObject, name="Child")
+    player1.transform.local_position = [1.0, 0.0, 0.0]  # 使用本地坐标
+    player1.transform.local_rotation = [0.0, 0.0, 0.0]
+    player1.transform.local_scale = [0.5, 0.5, 0.5]  # 子物体缩放为一半
     ecs.add_component(player1, Mesh(vertices))
 
     ecs.add_component(player1, material_component)
 
-    player.add_child(player1)
+    # 使用Python风格的父子关系设置
+    player1.set_parent(player, world_position_stays=False)  # 不保持世界位置，使用本地坐标
 
     main_loop = MainLoop()
     main_loop.run()

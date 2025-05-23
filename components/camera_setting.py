@@ -15,7 +15,7 @@
 3. up
 类型：np.array([0.0, 1.0, 0.0])
 含义：相机的上方向向量，通常是 Y 轴方向。
-作用：决定相机的“上”方向，用来避免相机出现倾斜或旋转。在常规的相机设置中，up=np.array([0.0, 1.0, 0.0]) 表示相机的“上”方向是沿着 Y 轴。
+作用：决定相机的"上"方向，用来避免相机出现倾斜或旋转。在常规的相机设置中，up=np.array([0.0, 1.0, 0.0]) 表示相机的"上"方向是沿着 Y 轴。
 
 4. right
 类型：np.cross(up, front)
@@ -50,13 +50,14 @@
 10. projection_matrix
 类型：self.perspective_projection(fov, aspect_ratio, near_clip, far_clip)
 含义：投影矩阵（Projection Matrix），用于将三维场景投影到二维平面上（例如屏幕）。
-作用：投影矩阵决定了物体如何根据视场角（fov）、宽高比（aspect_ratio）、近裁剪面和远裁剪面进行投影。self.perspective_projection() 是一个自定义的函数，生成透视投影矩阵，用来模拟相机镜头的透视效果。
+作用：投影矩阵决定了物体如何根据视场角（fov）、宽高比（aspect_ratio）、近裁剪面和远裁剪面进行投影。self.perspective_projection() 是一个自定义的函数，生成透视投影矩阵，用来模拟相机镜头的透视效果。
 '''
 
 import numpy as np
 from core.ecs import Component
 from enum import Enum
 from math import radians, cos, sin, sqrt
+from util.quaternion import Quaternion
 
 
 class ProjectionType(Enum):
@@ -64,52 +65,9 @@ class ProjectionType(Enum):
     ORTHOGRAPHIC = 1
 
 
-class Quaternion:
-    """简单的四元数类，用于处理旋转"""
-
-    def __init__(self, w=1.0, x=0.0, y=0.0, z=0.0):
-        self.w = w
-        self.x = x
-        self.y = y
-        self.z = z
-
-    @staticmethod
-    def from_euler_angles(pitch, yaw, roll):
-        """从欧拉角创建四元数，单位为度"""
-        p = radians(pitch) / 2
-        y = radians(yaw) / 2
-        r = radians(roll) / 2
-
-        sin_p, cos_p = sin(p), cos(p)
-        sin_y, cos_y = sin(y), cos(y)
-        sin_r, cos_r = sin(r), cos(r)
-
-        w = cos_r * cos_p * cos_y + sin_r * sin_p * sin_y
-        x = sin_r * cos_p * cos_y - cos_r * sin_p * sin_y
-        y = cos_r * sin_p * cos_y + sin_r * cos_p * sin_y
-        z = cos_r * cos_p * sin_y - sin_r * sin_p * cos_y
-
-        return Quaternion(w, x, y, z)
-
-    def to_rotation_matrix(self):
-        """将四元数转换为3x3旋转矩阵"""
-        w, x, y, z = self.w, self.x, self.y, self.z
-        return np.array([
-            [1 - 2 * (y ** 2 + z ** 2), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-            [2 * (x * y + z * w), 1 - 2 * (x ** 2 + z ** 2), 2 * (y * z - x * w)],
-            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x ** 2 + y ** 2)]
-        ])
-
-    def normalize(self):
-        norm = sqrt(self.w ** 2 + self.x ** 2 + self.y ** 2 + self.z ** 2)
-        if norm == 0:
-            return Quaternion()
-        return Quaternion(self.w / norm, self.x / norm, self.y / norm, self.z / norm)
-
-
 class CameraSetting(Component):
     def __init__(self, position=np.array([0.0, 0.0, 3.0]),
-                 rotation=Quaternion(),  # 使用四元数表示旋转
+                 rotation=None,  # 使用新的四元数表示旋转
                  fov=45.0,
                  aspect_ratio=800 / 600,
                  near_clip=0.1,
@@ -117,7 +75,6 @@ class CameraSetting(Component):
                  projection_type=ProjectionType.PERSPECTIVE):
         super(CameraSetting, self).__init__()
         self.position = position
-        self.rotation = rotation.normalize()
         self.fov = fov
         self.aspect_ratio = aspect_ratio
         self.near_clip = near_clip
@@ -128,8 +85,12 @@ class CameraSetting(Component):
         self.pitch = 0.0  # 俯仰角
         self.yaw = -90.0  # 偏航角，初始化指向负Z轴
 
-        # 初始化旋转四元数
-        self.rotation = Quaternion.from_euler_angles(self.pitch, self.yaw, 0.0)
+        # 使用新的四元数系统
+        if rotation is None:
+            self.rotation = Quaternion.from_euler_angles(self.pitch, self.yaw, 0.0)
+        else:
+            self.rotation = rotation.normalized()
+        
         # 初始化方向向量
         self.update_direction_vectors()
 
@@ -212,9 +173,6 @@ class CameraSetting(Component):
     def look_at(self, target, up=np.array([0.0, 1.0, 0.0])):
         """类似 Unity 的 LookAt 方法，更新相机朝向"""
         direction = self.normalize(target - self.position)
-        # 计算四元数旋转，从默认前方向 [0,0,-1] 到目标方向
-        # 这里简化为仅计算方向，不考虑上向量的旋转
-        # 更复杂的实现需要考虑上向量，生成合适的旋转四元数
         forward = direction
         right = self.normalize(np.cross(up, forward))
         recalculated_up = np.cross(forward, right)
@@ -226,13 +184,13 @@ class CameraSetting(Component):
             [right[2], recalculated_up[2], -forward[2]],
         ])
 
-        # 将旋转矩阵转换为四元数
-        self.rotation = self.matrix_to_quaternion(rotation_matrix).normalize()
+        # 使用新的四元数系统进行矩阵到四元数转换
+        self.rotation = self._matrix_to_quaternion(rotation_matrix).normalized()
         self.is_dirty = False
         self.calculate_view_matrix()
 
-    def matrix_to_quaternion(self, matrix):
-        """将旋转矩阵转换为四元数"""
+    def _matrix_to_quaternion(self, matrix):
+        """将旋转矩阵转换为四元数，使用更精确的算法"""
         m = matrix
         trace = np.trace(m)
 
@@ -261,7 +219,7 @@ class CameraSetting(Component):
             y = (m[1, 2] + m[2, 1]) / s
             z = 0.25 * s
 
-        return Quaternion(w, x, y, z)
+        return Quaternion(x, y, z, w)
 
     def get_forward(self):
         """通过四元数获取前方向"""
@@ -273,3 +231,30 @@ class CameraSetting(Component):
         if norm == 0:
             return vec
         return vec / norm
+
+    # ============ 新增的高级四元数功能 ============
+    
+    def rotate_by_quaternion(self, quat):
+        """使用四元数旋转相机"""
+        self.rotation = (self.rotation * quat).normalized()
+        self._update_from_quaternion()
+    
+    def set_rotation_quaternion(self, quat):
+        """直接设置相机的旋转四元数"""
+        self.rotation = quat.normalized()
+        self._update_from_quaternion()
+    
+    def _update_from_quaternion(self):
+        """从四元数更新欧拉角和方向向量"""
+        # 从四元数转换为欧拉角
+        euler_angles = self.rotation.to_euler_angles()
+        self.pitch = euler_angles[0]
+        self.yaw = euler_angles[1]
+        # 注意：roll通常在相机中不使用，或者用于画面倾斜
+        
+        # 使用四元数直接计算方向向量（更精确），确保返回numpy数组
+        self.front = np.array(self.rotation.rotate_vector([0, 0, -1]), dtype=np.float32)  # 默认前方向
+        self.right = np.array(self.rotation.rotate_vector([1, 0, 0]), dtype=np.float32)   # 默认右方向  
+        self.up = np.array(self.rotation.rotate_vector([0, 1, 0]), dtype=np.float32)     # 默认上方向
+        
+        self.is_dirty = True
