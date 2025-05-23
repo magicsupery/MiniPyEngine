@@ -82,14 +82,26 @@ class Quaternion:
         return self.normalize()
     
     def inverse(self):
-        """四元数逆"""
+        """
+        四元数的逆
+        对于单位四元数，逆等于共轭
+        """
+        mag_sq = self.magnitude() ** 2
+        if mag_sq < 1e-8:
+            raise ValueError("Cannot compute inverse of zero quaternion")
+        
         conj = self.conjugate()
-        mag_sq = self.x**2 + self.y**2 + self.z**2 + self.w**2
-        if mag_sq > 1e-8:
-            return Quaternion(conj.x / mag_sq, conj.y / mag_sq, 
-                            conj.z / mag_sq, conj.w / mag_sq)
-        else:
-            return Quaternion(0, 0, 0, 1)
+        return Quaternion(conj.x / mag_sq, conj.y / mag_sq, conj.z / mag_sq, conj.w / mag_sq)
+    
+    def dot(self, other):
+        """
+        四元数点积
+        Args:
+            other: 另一个四元数
+        Returns:
+            点积结果 (float)
+        """
+        return self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w
     
     def to_euler_angles(self):
         """

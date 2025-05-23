@@ -36,6 +36,12 @@ class CameraMovementModule(LogicModule):
         self.need_rotate = False
         self.horizontal_directions = []
         self.vertical_directions = []
+        
+        # 平滑旋转相关属性
+        self.rotation_smoothing = 8.0  # 旋转平滑程度，值越大越平滑
+        self.target_yaw = None  # 目标偏航角
+        self.target_pitch = None  # 目标俯仰角
+        self.target_rotation = None  # 目标四元数旋转
 
         self.register_events()
 
@@ -81,23 +87,32 @@ class CameraMovementModule(LogicModule):
             if self.need_rotate:
                 camera_setting = GD.main_camera.get_component(CameraSetting)
                 
-                # 使用新的四元数系统进行相机旋转
-                # 更新偏航角和俯仰角
-                new_yaw = camera_setting.yaw + delta_x * self.rotation_sensitive
-                new_pitch = camera_setting.pitch + delta_y * self.rotation_sensitive
+                # 初始化目标旋转值（如果还没有初始化）
+                if self.target_yaw is None:
+                    self.target_yaw = camera_setting.yaw
+                    self.target_pitch = camera_setting.pitch
+                    self.target_rotation = camera_setting.rotation
+                
+                # 更新目标旋转角度
+                self.target_yaw += delta_x * self.rotation_sensitive
+                self.target_pitch += delta_y * self.rotation_sensitive
 
                 # 约束俯仰角
                 if self.constrain_pitch:
-                    new_pitch = max(-89.0, min(89.0, new_pitch))
+                    self.target_pitch = max(-89.0, min(89.0, self.target_pitch))
 
-                # 使用新的四元数方法设置旋转
-                new_rotation = Quaternion.from_euler_angles(new_pitch, new_yaw, 0.0)
-                camera_setting.set_rotation_quaternion(new_rotation)
+                # 计算目标四元数旋转
+                self.target_rotation = Quaternion.from_euler_angles(self.target_pitch, self.target_yaw, 0.0)
 
         input_system.register_mouse_move_listener(camera_mouse_move)
 
         def camera_mouse_left_button_pressed():
             self.need_rotate = True
+            # 初始化目标旋转为当前旋转
+            camera_setting = GD.main_camera.get_component(CameraSetting)
+            self.target_yaw = camera_setting.yaw
+            self.target_pitch = camera_setting.pitch
+            self.target_rotation = camera_setting.rotation
 
         def camera_mouse_left_button_released():
             self.need_rotate = False
@@ -108,25 +123,52 @@ class CameraMovementModule(LogicModule):
                                                     camera_mouse_left_button_released)
 
     def update(self, dt):
-        if len(self.horizontal_directions) == 0 and len(self.vertical_directions) == 0:
-            return
-
         camera_setting = GD.main_camera.get_component(CameraSetting)
         
-        # 相机移动逻辑保持不变，因为我们仍然使用front和right向量
-        if len(self.horizontal_directions) > 0:
-            last_horizontal_direction = self.horizontal_directions[-1]
-            if last_horizontal_direction == CameraMoveDirection.LEFT:
-                camera_setting.position -= camera_setting.right * self.move_speed * dt
-            elif last_horizontal_direction == CameraMoveDirection.RIGHT:
-                camera_setting.position += camera_setting.right * self.move_speed * dt
+        # 平滑旋转处理
+        if self.target_rotation is not None:
+            current_rotation = camera_setting.rotation
+            
+            # 计算插值系数（基于帧率的平滑过渡）
+            # 使用指数衰减来实现平滑过渡
+            smoothing_factor = 1.0 - pow(0.5, self.rotation_smoothing * dt)
+            
+            # 检查四元数方向，选择最短路径
+            if current_rotation.dot(self.target_rotation) < 0:
+                # 如果点积为负，说明需要反转其中一个四元数以选择最短路径
+                target_for_slerp = Quaternion(-self.target_rotation.x, -self.target_rotation.y, 
+                                             -self.target_rotation.z, -self.target_rotation.w)
+            else:
+                target_for_slerp = self.target_rotation
+            
+            # 使用SLERP进行平滑插值
+            smoothed_rotation = Quaternion.slerp(current_rotation, target_for_slerp, smoothing_factor)
+            
+            # 应用平滑后的旋转
+            camera_setting.set_rotation_quaternion(smoothed_rotation)
+            
+            # 如果已经足够接近目标旋转，停止插值
+            rotation_difference = abs(1.0 - abs(current_rotation.dot(target_for_slerp)))
+            if rotation_difference < 0.001:  # 非常小的阈值
+                camera_setting.set_rotation_quaternion(self.target_rotation)
+                if not self.need_rotate:
+                    self.target_rotation = None  # 清除目标旋转
+        
+        # 相机移动逻辑保持不变
+        if len(self.horizontal_directions) > 0 or len(self.vertical_directions) > 0:
+            if len(self.horizontal_directions) > 0:
+                last_horizontal_direction = self.horizontal_directions[-1]
+                if last_horizontal_direction == CameraMoveDirection.LEFT:
+                    camera_setting.position -= camera_setting.right * self.move_speed * dt
+                elif last_horizontal_direction == CameraMoveDirection.RIGHT:
+                    camera_setting.position += camera_setting.right * self.move_speed * dt
 
-        if len(self.vertical_directions) > 0:
-            last_vertical_direction = self.vertical_directions[-1]
-            if last_vertical_direction == CameraMoveDirection.FORWARD:
-                camera_setting.position += camera_setting.front * self.move_speed * dt
-            elif last_vertical_direction == CameraMoveDirection.BACKWARD:
-                camera_setting.position -= camera_setting.front * self.move_speed * dt
+            if len(self.vertical_directions) > 0:
+                last_vertical_direction = self.vertical_directions[-1]
+                if last_vertical_direction == CameraMoveDirection.FORWARD:
+                    camera_setting.position += camera_setting.front * self.move_speed * dt
+                elif last_vertical_direction == CameraMoveDirection.BACKWARD:
+                    camera_setting.position -= camera_setting.front * self.move_speed * dt
 
 
 def main():
