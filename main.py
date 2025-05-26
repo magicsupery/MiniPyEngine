@@ -190,34 +190,82 @@ def main():
     camera_move_module = CameraMovementModule()
     logic_system.add_logic_module(camera_move_module)
 
-    # 创建第一个游戏对象
-    player = ecs.create_entity(GameObject, name="Player")
-    player.transform.position = [0.0, 0.0, -10.0]
-    player.transform.rotation = [0.0, 0.0, 0.0]
-    player.transform.scale = [1.0, 1.0, 1.0]
-    vertices = np.array([
-        -0.5, -0.5, 0.0, 0.0, 0.0,
-        0.5, -0.5, 0.0, 1.0, 0.0,
-        0.5, 0.5, 0.0, 1.0, 1.0
-    ], dtype=np.float32)
-    ecs.add_component(player, Mesh(vertices))
-
+    print("🚀 开始创建3D场景...")
+    
+    # 加载材质组件
     material_component = GD.resource_manager.load_material_from_config("resources/shaders/my_first_shader.json")
+    
+    # 创建第一个游戏对象 - 使用立方体模型
+    print("🔷 创建立方体对象...")
+    cube_player = ecs.create_entity(GameObject, name="CubePlayer")
+    cube_player.transform.position = [-2.0, 0.0, -8.0]
+    cube_player.transform.rotation = [0.0, 0.0, 0.0]
+    cube_player.transform.scale = [1.0, 1.0, 1.0]
+    
+    # 使用资源管理器加载立方体模型
+    cube_mesh = GD.resource_manager.load_mesh_from_file("resources/models/cube.obj")
+    if cube_mesh:
+        ecs.add_component(cube_player, cube_mesh)
+        print("   ✅ 立方体模型加载成功!")
+    else:
+        # 回退到原始三角形
+        print("   ❌ 立方体模型加载失败，使用原始三角形")
+        vertices = np.array([
+            -0.5, -0.5, 0.0, 0.0, 0.0,
+            0.5, -0.5, 0.0, 1.0, 0.0,
+            0.5, 0.5, 0.0, 1.0, 1.0
+        ], dtype=np.float32)
+        ecs.add_component(cube_player, Mesh(vertices))
+    
+    ecs.add_component(cube_player, material_component)
 
-    ecs.add_component(player, material_component)
+    # 创建第二个游戏对象 - 使用金字塔模型
+    print("🔺 创建金字塔对象...")
+    pyramid_player = ecs.create_entity(GameObject, name="PyramidPlayer")
+    pyramid_player.transform.position = [2.0, 0.0, -8.0]
+    pyramid_player.transform.rotation = [0.0, 45.0, 0.0]  # 旋转45度
+    pyramid_player.transform.scale = [1.5, 1.5, 1.5]  # 稍微放大
+    
+    # 使用资源管理器加载金字塔模型
+    pyramid_mesh = GD.resource_manager.load_mesh_from_file("resources/models/pyramid.obj")
+    if pyramid_mesh:
+        ecs.add_component(pyramid_player, pyramid_mesh)
+        print("   ✅ 金字塔模型加载成功!")
+        
+        # 显示模型信息
+        if hasattr(pyramid_mesh, 'obj_data'):
+            obj_data = pyramid_mesh.obj_data
+            print(f"   📊 金字塔信息: {len(obj_data['vertices'])}顶点, {len(obj_data['faces'])}面")
+    else:
+        print("   ❌ 金字塔模型加载失败")
 
-    # 创建第二个游戏对象作为子物体
-    player1 = ecs.create_entity(GameObject, name="Child")
-    player1.transform.local_position = [1.0, 0.0, 0.0]  # 使用本地坐标
-    player1.transform.local_rotation = [0.0, 0.0, 0.0]
-    player1.transform.local_scale = [0.5, 0.5, 0.5]  # 子物体缩放为一半
-    ecs.add_component(player1, Mesh(vertices))
+    ecs.add_component(pyramid_player, material_component)
 
-    ecs.add_component(player1, material_component)
+    # 创建第三个游戏对象 - 子对象（小立方体）
+    print("🔸 创建子立方体对象...")
+    child_cube = ecs.create_entity(GameObject, name="ChildCube")
+    child_cube.transform.local_position = [0.0, 2.0, 0.0]  # 在金字塔上方
+    child_cube.transform.local_rotation = [0.0, 0.0, 45.0]  # 倾斜45度
+    child_cube.transform.local_scale = [0.3, 0.3, 0.3]  # 小尺寸
+    
+    # 使用立方体模型（从缓存中获取）
+    small_cube_mesh = GD.resource_manager.load_mesh_from_file("resources/models/cube.obj")
+    if small_cube_mesh:
+        ecs.add_component(child_cube, small_cube_mesh)
+        print("   ✅ 子立方体模型加载成功!")
+    
+    ecs.add_component(child_cube, material_component)
 
-    # 使用Python风格的父子关系设置
-    player1.set_parent(player, world_position_stays=False)  # 不保持世界位置，使用本地坐标
+    # 设置父子关系 - 小立方体是金字塔的子对象
+    child_cube.set_parent(pyramid_player, world_position_stays=False)
+    print("   🔗 父子关系设置完成: 小立方体 -> 金字塔")
 
+    print("✅ 3D场景创建完成!")
+    print("\n🎮 控制说明:")
+    print("   WASD - 移动相机")
+    print("   鼠标左键+拖拽 - 旋转相机视角")
+    print("   立方体在左侧，金字塔在右侧，小立方体在金字塔上方")
+    
     main_loop = MainLoop()
     main_loop.run()
 

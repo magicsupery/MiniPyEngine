@@ -56,19 +56,26 @@ class OpenGLRenderObject(RenderObject):
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, self.mesh.indices.nbytes, self.mesh.indices, GL_STATIC_DRAW)
 
-        # position attribute
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * self.mesh.vertices.itemsize, c_void_p(0))
+        # 固定的顶点属性设置 - 8个float格式 [x, y, z, nx, ny, nz, u, v]
+        stride = 8 * self.mesh.vertices.itemsize
+        
+        # 位置属性 (location = 0)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, c_void_p(0))
         glEnableVertexAttribArray(0)
 
-        # uv attribute
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * self.mesh.vertices.itemsize,
-                              c_void_p(3 * self.mesh.vertices.itemsize))
+        # 法线属性 (location = 1)
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, c_void_p(3 * self.mesh.vertices.itemsize))
         glEnableVertexAttribArray(1)
+
+        # UV属性 (location = 2)
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, c_void_p(6 * self.mesh.vertices.itemsize))
+        glEnableVertexAttribArray(2)
 
         if len(self.mesh.indices) > 0:
             glDrawElements(GL_TRIANGLES, len(self.mesh.indices), GL_UNSIGNED_INT, None)
         else:
-            glDrawArrays(GL_TRIANGLES, 0, len(self.mesh.vertices) // 5)
+            vertex_count = self.mesh.get_vertex_count()
+            glDrawArrays(GL_TRIANGLES, 0, vertex_count)
 
         glDeleteVertexArrays(1, [VAO])
         glDeleteBuffers(1, [VBO])
