@@ -1,0 +1,157 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# MiniPyEngine - Cursor AI 开发规则
+
+## 🎯 项目概述
+MiniPyEngine是一个用于学习游戏引擎开发的轻量级Python游戏引擎，采用ECS架构，支持3D渲染和资产加载。
+
+## 📋 核心开发原则
+
+### 1. Unity引擎参考标准
+- **架构设计**: 尽可能参考Unity的组件系统、Transform层次结构、资源管理等设计模式
+- **API命名**: 遵循Unity的命名规范，但使用下划线的方式，而不是驼峰式，如`Transform.position`、`GameObject.set_active()`等
+- **工作流程**: 参考Unity的Scene-GameObject-Component工作流
+- **数据组织**: 学习Unity的Prefab、Material、Mesh等资源组织方式
+
+### 2. ECS架构规范
+- 保持Entity-Component-System的清晰分离
+- Component应该是纯数据载体，避免包含复杂逻辑
+- System负责处理组件间的交互和更新逻辑
+- Entity仅作为组件的容器和唯一标识
+
+### 3. 代码质量标准
+- 使用中文注释说明复杂逻辑
+- 保持代码简洁易读，便于学习和理解
+- 优先考虑教育价值而非极致性能优化
+- 确保每个功能都有相应的测试和文档
+
+## 🔄 自动化工作流程
+
+### 1. 变更日志管理
+**重要**: 每当生成代码diff或进行重要修改时，必须自动更新变更日志
+
+#### 操作步骤:
+1. 在`docs/changelog.md`中添加新条目
+2. 使用以下格式记录变更:
+```markdown
+## [日期] - 版本标识
+
+### 🚀 新增功能
+- 功能描述
+
+### 🔧 改进优化  
+- 改进内容
+
+### 🐛 问题修复
+- 修复内容
+
+### 📁 文件变更
+- 新增文件列表
+- 修改文件列表
+- 删除文件列表
+```
+
+#### 自动化要求:
+- 每次代码生成后，自动分析变更内容
+- 提取关键功能点和技术改进
+- 生成简洁但完整的变更摘要
+- 确保变更日志的连续性和可追溯性
+
+### 2. 文档同步更新
+- 当核心功能发生变化时，同步更新README.md
+- 为新组件和系统生成相应的文档
+- 保持API文档与代码实现的一致性
+
+## 🏗️ 开发规范
+
+### 1. 文件组织规范
+```
+MiniPyEngine/
+├── components/          # 组件系统 (参考Unity Component)
+├── systems/            # 系统逻辑 
+├── core/               # 核心ECS架构
+├── Entity/             # 实体管理 (参考Unity GameObject)
+├── graphics/           # 渲染系统 (参考Unity Renderer)
+├── resource_manager/   # 资源管理 (参考Unity AssetDatabase)
+├── resources/          # 资源文件 (参考Unity Assets)
+├── util/               # 工具类
+├── tests/              # 测试文件
+├── docs/               # 文档
+└── tools/              # 开发工具
+```
+
+### 2. 命名规范
+- **类名**: PascalCase (如`FileResourceManager`)
+- **方法名**: snake_case (如`load_mesh_from_file`)
+- **变量名**: snake_case (如`vertex_count`)
+- **常量名**: UPPER_SNAKE_CASE (如`MAX_VERTEX_COUNT`)
+- **文件名**: snake_case (如`file_resource_manager.py`)
+
+### 3. Unity参考实现
+- **Transform**: 参考Unity Transform的位置、旋转、缩放和父子关系
+- **GameObject**: 参考Unity GameObject的组件管理模式
+- **Component**: 参考Unity MonoBehaviour的生命周期
+- **Material**: 参考Unity Material的属性系统
+- **Mesh**: 参考Unity Mesh的顶点数据结构
+- **Camera**: 参考Unity Camera的投影和视图矩阵
+
+### 4. 数据格式标准
+- **顶点数据**: 统一使用8float格式 `[x,y,z,nx,ny,nz,u,v]`
+- **变换矩阵**: 4x4 float32矩阵，列主序
+- **四元数**: wxyz格式，遵循数学约定
+- **坐标系**: 右手坐标系，Y轴向上
+
+## 🧪 测试和质量保证
+
+### 1. 测试覆盖要求
+- 每个新功能必须有对应的单元测试
+- 测试文件放在`tests/`目录下
+- 测试文件命名格式: `test_[模块名].py`
+- 确保测试能独立运行且可重复
+
+### 2. 代码审查标准
+- 检查是否遵循Unity设计模式
+- 验证ECS架构的正确性
+- 确保代码可读性和教育价值
+- 验证性能不会出现明显退化
+
+## 🎯 特殊指令
+
+### 当进行以下操作时，务必同时更新changelog:
+1. 添加新的组件或系统
+2. 修改核心架构
+3. 更新资源管理器功能
+4. 改进渲染管线
+5. 修复重要bug
+6. 重构现有代码
+7. 添加新的文件格式支持
+8. 优化性能或内存使用
+
+### Unity参考检查清单:
+- [ ] 新功能是否有Unity对应实现可参考？
+- [ ] API设计是否符合Unity的使用习惯？
+- [ ] 组件职责是否清晰分离？
+- [ ] 是否正确实现了生命周期管理？
+- [ ] 数据流是否符合ECS模式？
+
+## 🔧 开发工具
+
+### 推荐使用的工具和库:
+- **数学运算**: numpy (矩阵和向量计算)
+- **图形渲染**: PyOpenGL (OpenGL绑定)
+- **窗口管理**: glfw (窗口和输入)
+- **图像处理**: PIL/Pillow (纹理加载)
+- **测试框架**: pytest (单元测试)
+
+### 代码质量工具:
+- 保持代码简洁，优先可读性
+- 使用类型提示提高代码可维护性
+- 适当使用设计模式，但不过度设计
+
+---
+
+
+**Remember**: This engine is built for learning purposes. Always prioritize clarity and educational value over performance optimization. When in doubt, refer to Unity's implementation patterns. 
