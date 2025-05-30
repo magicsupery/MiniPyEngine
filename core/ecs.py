@@ -29,7 +29,6 @@ class Entity(object):
         assert (isinstance(component, Component))
         assert (type(component) not in self.components)
         self.components[type(component)] = component
-        # super().__setattr__(type(component).__name__, component)
         component.set_owner(self)
 
     def get_component(self, component_type):
@@ -48,23 +47,49 @@ class System(object):
 
 class ECSManager(object):
     def __init__(self):
-        self.entities = []
-        self.component_to_entity = defaultdict(list)
+        # Scene管理
+        from core.scene import SceneManager
+        self.scene_manager = SceneManager()
         self.systems = []
 
     def create_entity(self, entity_type, entity_id=None, **kwargs):
+        """
+        创建实体并自动添加到活动场景
+        所有Entity都必须在Scene中管理
+        """
         assert (isinstance(entity_type, type))
         assert (issubclass(entity_type, Entity))
         entity = entity_type(entity_id, **kwargs)
-        self.entities.append(entity)
+        
+        # 确保有活动场景
+        active_scene = self.scene_manager.active_scene
+        if active_scene is None:
+            # 如果没有活动场景，创建默认场景
+            active_scene = self.scene_manager.create_scene("MainScene")
+        
+        # 将所有Entity添加到场景中
+        active_scene.add_entity(entity)
+        
         return entity
 
     def add_component(self, entity, component):
+        """为实体添加组件"""
         entity.add_component(component)
-        self.component_to_entity[type(component)].append(entity)
+        
+        # 通知Scene更新组件映射
+        active_scene = self.scene_manager.active_scene
+        if active_scene and entity.entity_id in active_scene._entities:
+            active_scene.notify_component_added(entity, type(component))
 
     def get_entities_with_component(self, component_type):
-        return self.component_to_entity[component_type]
+        """
+        获取具有指定组件的所有实体
+        从活动场景中获取
+        """
+        active_scene = self.scene_manager.active_scene
+        if active_scene:
+            return active_scene.get_entities_with_component(component_type)
+        return []
 
     def add_system(self, system):
         self.systems.append(system)
@@ -73,8 +98,42 @@ class ECSManager(object):
         for system in self.systems:
             if isinstance(system, system_type):
                 return system
-
         return None
 
     def get_systems(self):
         return self.systems
+    
+    # ============ Scene相关的便捷方法 ============
+    
+    def create_scene(self, name: str):
+        """创建新场景"""
+        return self.scene_manager.create_scene(name)
+    
+    def get_active_scene(self):
+        """获取活动场景"""
+        return self.scene_manager.active_scene
+    
+    def set_active_scene(self, scene):
+        """设置活动场景"""
+        return self.scene_manager.set_active_scene(scene)
+    
+    def find_entity(self, name: str):
+        """在活动场景中查找Entity"""
+        active_scene = self.scene_manager.active_scene
+        if active_scene:
+            return active_scene.find_entity(name)
+        return None
+    
+    def get_all_entities(self):
+        """获取活动场景中的所有Entity"""
+        active_scene = self.scene_manager.active_scene
+        if active_scene:
+            return active_scene.all_entities
+        return []
+    
+    def get_scene_info(self):
+        """获取当前场景信息"""
+        active_scene = self.scene_manager.active_scene
+        if active_scene:
+            return active_scene.get_scene_info()
+        return {"error": "No active scene"}

@@ -6,6 +6,7 @@ class GlobalData(object):
         self.renderer = None
         self.main_camera = None
         self.resource_manager = None
+        self.scene_manager = None
 
 
 global_data = GlobalData()

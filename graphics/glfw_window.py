@@ -4,7 +4,7 @@ import glfw
 from graphics.window import Window
 
 from collections import deque
-from input.event_types import Key, KeyAction, MouseAction, MouseButton
+from input.event_types import Key, KeyAction, MouseAction, MouseButton, ScrollDirection
 
 
 class GlfwWindow(Window):
@@ -39,6 +39,7 @@ class GlfwWindow(Window):
         self.keyboard_events = deque()
         self.mouse_button_events = deque()
         self.mouse_move_events = deque()
+        self.scroll_events = deque()
 
     def initialize(self, width, height, title):
         if not glfw.init():
@@ -62,6 +63,7 @@ class GlfwWindow(Window):
         glfw.set_key_callback(self.window, self.key_callback)
         glfw.set_mouse_button_callback(self.window, self.mouse_button_callback)
         glfw.set_cursor_pos_callback(self.window, self.cursor_position_callback)
+        glfw.set_scroll_callback(self.window, self.scroll_callback)
         return
 
     def poll_events(self):
@@ -90,6 +92,10 @@ class GlfwWindow(Window):
     def pop_mouse_move_event(self):
         if self.mouse_move_events:
             yield self.mouse_move_events.popleft()
+
+    def pop_scroll_event(self):
+        if self.scroll_events:
+            yield self.scroll_events.popleft()
 
     def key_callback(self, window, key, scancode, action, mods):
         if key not in self.KEY_TRANSFORM_MAP or action not in self.ACTION_TRANSFORM_MAP:
@@ -121,4 +127,8 @@ class GlfwWindow(Window):
         delta_y = ypos - last_y
         self.mouse_move_events.append((xpos, ypos, delta_x, delta_y))
         self.last_cursor_pos = (xpos, ypos)
+        return
+
+    def scroll_callback(self, window, xoffset, yoffset):
+        self.scroll_events.append((xoffset, yoffset))
         return

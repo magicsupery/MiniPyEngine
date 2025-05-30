@@ -12,12 +12,14 @@ class InputSystem(System):
         self.mouse_move_listener = []
         self.mouse_button_listener = defaultdict(list)
         self.keyboard_listener = defaultdict(list)
+        self.scroll_listener = []
         self.id_2_callback = {}
 
     def update(self, dt):
         self.handle_keyboard_input()
         self.handle_mouse_button_input()
         self.handle_mouse_move_input()
+        self.handle_scroll_input()
         return
 
     def handle_keyboard_input(self):
@@ -39,6 +41,12 @@ class InputSystem(System):
         for xpos, ypos, delta_x, delta_y in window.pop_mouse_move_event():
             for callback in self.mouse_move_listener:
                 callback(xpos, ypos, delta_x, delta_y)
+
+    def handle_scroll_input(self):
+        window = GD.renderer.window
+        for xoffset, yoffset in window.pop_scroll_event():
+            for callback in self.scroll_listener:
+                callback(xoffset, yoffset)
 
     def register_keyboard_listener(self, key, action, callback):
         listener_id = ObjectId()
@@ -71,4 +79,15 @@ class InputSystem(System):
     def unregister_mouse_move_listener(self, listener_id):
         callback = self.id_2_callback[listener_id]
         self.mouse_move_listener.remove(callback)
+        return
+
+    def register_scroll_listener(self, callback):
+        listener_id = ObjectId()
+        self.scroll_listener.append(callback)
+        self.id_2_callback[listener_id] = callback
+        return listener_id
+
+    def unregister_scroll_listener(self, listener_id):
+        callback = self.id_2_callback[listener_id]
+        self.scroll_listener.remove(callback)
         return

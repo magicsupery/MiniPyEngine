@@ -160,13 +160,14 @@ class OpenGLRenderer(Renderer):
     def add_shader(self, shader):
         self.shaders.append(shader)
 
-    def setup_camera(self, camera_setting):
+    def setup_camera(self, camera):
+        """设置相机，camera现在是Camera实体而不是CameraSetting组件"""
         for shader in self.shaders:
             shader.use()
             camera_loc = glGetUniformLocation(shader.shader_program, "view")
-            glUniformMatrix4fv(camera_loc, 1, GL_FALSE, camera_setting.view_matrix)
+            glUniformMatrix4fv(camera_loc, 1, GL_FALSE, camera.view_matrix)
             projection_loc = glGetUniformLocation(shader.shader_program, "projection")
-            glUniformMatrix4fv(projection_loc, 1, GL_FALSE, camera_setting.projection_matrix)
+            glUniformMatrix4fv(projection_loc, 1, GL_FALSE, camera.projection_matrix)
 
         glUseProgram(0)
         return

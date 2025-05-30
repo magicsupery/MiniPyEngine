@@ -26,3 +26,11 @@ class MouseButton(Enum):
 class MouseAction(Enum):
     PRESSED = auto()
     RELEASED = auto()
+
+
+class ScrollDirection(Enum):
+    """鼠标滚轮方向"""
+    UP = auto()
+    DOWN = auto()
+    LEFT = auto()
+    RIGHT = auto()
